@@ -77,27 +77,19 @@ public class DataRouting {
 				 double[] num = {0.0,0.0,0.0};  //total data-dup data-dedup ratio
 				 OP.add(j,num);
 			}
-			
                         
-			/*Process files(all the segments*/
-			File[] incomingFile = null;
-			incomingFile = new File(outputpath).listFiles();
-			for(int h = 1; h <=incomingFile.length; h++){
-				File file = null;
-				file = new File(outputpath+"/Segment_"+ h);
-
-				
-			/*
-			 * Part I: deduplication
-			 */
-
-			resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
+                        resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
 			resultRecord.flush();
 			resultRecord.println("\nThe chunk size is: " + chunksize + " KB"
 					+ "\nThe segment size is: " + segsize + " MB");		
 			System.out.println("\nThe chunk size is: " + chunksize
 					+ "\nThe segment size is: " + segsize);	
-		
+                        
+			/*Process files(all the segments*/
+			File[] incomingFile = new File(outputpath).listFiles();
+			for(int h = 1; h <=incomingFile.length; h++){
+                            File file = new File(outputpath+"/Segment_"+ h);
+			
 			/*
 			 * Data routing operation
 			 * Before m, send it to all
