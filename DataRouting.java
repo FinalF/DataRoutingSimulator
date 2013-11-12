@@ -17,19 +17,16 @@ public class DataRouting {
  * parameters: 
  * 1. the number of storage nodes : n
  * 2. the number of initial tries : m
- * 3. the number of operations: t
  */
-	public static int t = 1;
 	public static int n = 2;
 	public static int m = 10;
-	public static int M = 1; //number of containers to be tracked in the index (num of segments to be compared)
+	public static int mode = 0;
 	public static int chunksize = 8;
 	public static int segsize = 16;
 	public static String resultRecordFolder = "testData/resultRecord";
 	public static Queue<Node> nodeQue=new LinkedList<Node>();
 	public static File[] recordFiles = new File(resultRecordFolder).listFiles();
 	public static PrintWriter resultRecord; 
-	public static String[] hashRecord;
 
 	
 	public static int segAmount = 100;  //segment, every waveAmount segments of data, calculate dedup rate  & record index size
@@ -46,7 +43,7 @@ public class DataRouting {
 		
 	
 	public static ArrayList<BloomFilter<String>> BF;
-	public static ArrayList<HashMap<String, long[]>> INDEX;
+	public static ArrayList<HashMap<String, Integer>> INDEX;
 	public static ArrayList<double[]> OP;
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
@@ -65,25 +62,29 @@ public class DataRouting {
 				System.out.println("Explore "+m+" times");
 				}else{System.out.println("Number of initial tests required");
 				}
-
+                        i++;
+				if(i < args.length){
+				mode = Integer.parseInt(args[i]);
+				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull");
+				}
 			/*Initialize index and BF for each node*/
 			BF = new ArrayList<BloomFilter<String>>(n);
-			INDEX = new ArrayList<HashMap<String, long[]>>(n);
+			INDEX = new ArrayList<HashMap<String, Integer>>(n);
 			OP = new ArrayList<double[]>(n);
 			for(int j=0; j<n ; j++){
 				 BF.add(j, new BloomFilter<String>(0.1, 7864320/n));
-				 INDEX.add(j, new HashMap<String, long[]>());
+				 INDEX.add(j, new HashMap<String, Integer>());
 				 double[] num = {0.0,0.0,0.0};  //total data-dup data-dedup ratio
 				 OP.add(j,num);
 			}
 			
+                        
 			/*Process files(all the segments*/
 			File[] incomingFile = null;
 			incomingFile = new File(outputpath).listFiles();
 			for(int h = 1; h <=incomingFile.length; h++){
 				File file = null;
 				file = new File(outputpath+"/Segment_"+ h);
-				hashRecord = new String[segsize*1024/chunksize];
 
 				
 			/*
@@ -102,19 +103,29 @@ public class DataRouting {
 			 * Before m, send it to all
 			 * After that, send it to one with highest dedup ratio
 			 */
-			if(t<=m){
-				for(int k=0;k<n;k++){
-					dedupProcess(file,BF.get(k),INDEX.get(k),OP.get(k));
-				}
-			}else{
-				int choice = StochasticDataRoute();
-				dedupProcess(file,BF.get(choice),INDEX.get(choice),OP.get(choice));
-			}
-			
+                        if(mode==0){
+                            /*my algorithm*/
+                            if(h<=m){
+                                    for(int k=0;k<n;k++){
+                                            dedupProcess(file,INDEX.get(k),OP.get(k));
+                                    }
+                            }else{
+                                    int choice = StochasticDataRoute();
+                                    dedupProcess(file,INDEX.get(choice),OP.get(choice));
+                            }
+                        }else if(mode==1){
+                            /*stateless*/
+                        }else if(mode==2){
+                            /*statefull*/
+                        }else{
+                            System.out.println("Mode chosen error!");
+                            resultRecord.close();
+                            System.exit(0);
+                        }
 			/*
 			 * periodically output statistics (every 'segAmount' segments, we do one time's dedup)
 			 */
-			if(t%segAmount == 0){	
+			if(h%segAmount == 0){	
 				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),OP));
 				resultRecord.println();
 				resultRecord.println("The culmulative segments are: " + i +
@@ -168,10 +179,9 @@ public class DataRouting {
 	}
 	
 	
-	static void dedupProcess(File file, BloomFilter<String> bf,HashMap<String, long[]> index,double[] op) throws IOException{
+	static void dedupProcess(File file,HashMap<String,Integer> index,double[] op) throws IOException{
 	
-		DupDetection dP = new DupDetection(index,chunksize, segsize, hashRecord,
-				bf,file,segAmount,op);		
+		DupDetection dP = new DupDetection(index,chunksize, segsize, file,segAmount,op);		
 		dP.dedup();
 		total += dP.getTotal();
 		dup += dP.getDup();

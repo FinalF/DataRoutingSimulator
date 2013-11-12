@@ -1,40 +1,31 @@
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
-import java.util.Map.Entry;
 
 public class DupDetection {
 
-	Map<String, long[]> index;
+	Map<String,Integer> index;
 	long totalChunkNum;
 	 int chunkSize;
 	 int segSize;
 	 long chunkNum;
-	 String[] hashRecord;
 	 File sampledHash; //the input file
-	 BloomFilter<String> bf;
 	 long dup;
 	 long total;
-	static int[] chunksizeRecord ;
 	long indexSize;
 	int segAmount;
-	int boundaryCheck;
-	 DupDetection(Map<String, long> index,int chunkSize, int segSize, String[] hashRecord,
-			BloomFilter<String> bf,File sampledHash, int  segAmount,double[] op){
+        double[] op;
+	 DupDetection(Map<String, Integer> index,int chunkSize, int segSize, 
+			File sampledHash, int  segAmount,double[] op){
 		this.sampledHash = sampledHash;
 		this.index = index;
 		this.chunkSize =chunkSize;
 		this.segSize = segSize;
-		this.hashRecord = hashRecord;
-		this.bf = bf;
-		this.chunkNum = segSize*1024/chunkSize;
-		 chunksizeRecord = new int[(int) chunkNum];	 		 
+		this.chunkNum = segSize*1024/chunkSize; 		 
 		 this.segAmount = segAmount;
+                 this.op = op;
 
 	}
 	
@@ -49,21 +40,18 @@ public class DupDetection {
 		loadIn.nextLine();
 		int i = 0;
 		while(loadIn.hasNextLine()){
-			totalChunkNum++;
-		String[] infor = loadIn.nextLine().split(",");
-		hashRecord[i] = infor[4]; //put the hashvalue into the RAM for the following comparison
-		chunksizeRecord[i] = Integer.parseInt(infor[3]) ;
-		total += Long.parseLong(infor[3]);
-		long hashvalue = Long.parseLong(infor[4].substring(30),16);
-			if(index.containsKey(infor[4])){
-				/*
-				 * Here we can set a threshold to limit the cache size!!
-				 */			
-				index.put(infor[4],1); //update the index
-			}
-		i++;
+                    totalChunkNum++;
+                    String[] infor = loadIn.nextLine().split(",");
+                    total += Long.parseLong(infor[3]);
+                            if(index.containsKey(infor[4])){
+                                dup+=Long.parseLong(infor[3]);		
+                            }else{
+                                index.put(infor[4],1); //update the index
+                            }
 		}
-
+                op[0] += getTotal();
+                op[1] += getDup();
+                op[2] = op[1]/op[0];
 	 }
 	 
 
