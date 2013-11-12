@@ -204,9 +204,17 @@ public class DataRouting {
 			resultRecord.print(n.dedupE);
 			resultRecord.println();
 		}
-		for(Node n:nodeQue){
-			resultRecord.println("\n+++++++++++++++++++++statistics for each node++++++++++\n");
-			
+
+		resultRecord.println("\n+++++++++++++++++++++statistics for each node++++++++++\n");
+		for(int i = 0; i < n; i++){
+			Iterator<Node> ir = nodeQue.iterator();
+			while(ir.hasNext()){
+				Node n = ir.next();
+				double dedupRatio = n.OP.get(i)[2];
+				resultRecord.print(dedupRatio);
+			}
+			resultRecord.println();
+
 		}
 	}
 

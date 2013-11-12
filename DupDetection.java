@@ -16,14 +16,11 @@ public class DupDetection {
 	 int segSize;
 	 long chunkNum;
 	 String[] hashRecord;
-//	 int segNo;
 	 File sampledHash; //the input file
 	 BloomFilter<String> bf;
 	 long dup;
 	 long total;
 	static int[] chunksizeRecord ;
-	int sampleNumPerSeg ;
-	File[] containers;
 	long indexSize;
 	int segAmount;
 	int boundaryCheck;
