@@ -24,7 +24,7 @@ public class DupDetection {
 	long indexSize;
 	int segAmount;
 	int boundaryCheck;
-	 DupDetection(Map<String, long[]> index,int chunkSize, int segSize, String[] hashRecord,
+	 DupDetection(Map<String, long> index,int chunkSize, int segSize, String[] hashRecord,
 			BloomFilter<String> bf,File sampledHash, int  segAmount,double[] op){
 		this.sampledHash = sampledHash;
 		this.index = index;
@@ -56,12 +56,10 @@ public class DupDetection {
 		total += Long.parseLong(infor[3]);
 		long hashvalue = Long.parseLong(infor[4].substring(30),16);
 			if(index.containsKey(infor[4])){
-
 				/*
 				 * Here we can set a threshold to limit the cache size!!
-				 */
-				
-				index.put(infor[4],meta); //update the index
+				 */			
+				index.put(infor[4],1); //update the index
 			}
 		i++;
 		}

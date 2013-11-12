@@ -124,7 +124,8 @@ public class DataRouting {
 									"\nThe deduplication rate is : " + (double)dup/total*100 +"%");
 				resultRecord.println();
 				resultRecord.println("####The dedup efficiency is: " + (double)dup/(indexTotal())+" dup/index entry slot");	
-			}					
+			}	
+			
 			}
 			resultRecord.println("The total data is: "+total+"\nThe duplicates are: "+dup+
 					 "\nThe deduplication rate is : " + (double)dup/total*100 +"%");
