@@ -1,12 +1,15 @@
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Scanner;
 
 /*
  * simulator of data routing in deduplication cluster
@@ -33,6 +36,8 @@ public class DataRouting {
 	static long starttime;
 	static long endtime;	
 	
+	public static File fileManage = new File("testData/FileManager/fileInforRecord.txt");
+	public static File ChunkManage = new File("testData/chunkManage/chunkInfo");
 	public static String outputpath = "testData/outputSegSample";  //folder where store the input data table
 	public static long totalChunkNum = 0;
 	public static long fileTotal;
@@ -104,7 +109,9 @@ public class DataRouting {
                                     dedupProcess(file,INDEX.get(choice),OP.get(choice));
                             }
                         }else if(mode==1){
-                            /*stateless*/
+                            /*stateless,hash(1st chunk) mod n*/
+                            int choice = StatelessDataRoute(file);
+                            dedupProcess(file,INDEX.get(choice),OP.get(choice));
                         }else if(mode==2){
                             /*statefull*/
                         }else{
@@ -116,9 +123,8 @@ public class DataRouting {
 			 * periodically output statistics (every 'segAmount' segments, we do one time's dedup)
 			 */
 			if(h%segAmount == 0){	
-                                ArrayList<double[]> tmp = OP;
-				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmp));
-				resultRecord.println();
+				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmpData()));
+                                resultRecord.println();
 				resultRecord.println("The culmulative segments are: " + h +
 									"\nCurrent data amount is: "+total+
 									"\nThe duplicates are: "+dup+
@@ -136,8 +142,8 @@ public class DataRouting {
 								"\nThe deduplication rate is : " + (double)dup/total*100 +"%");
 
                         ArrayList<double[]> tmp = OP;
-			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmp));
-	
+			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData()));
+                        tmp.clear();
 			matlabStatistic();
 			
 			resultRecord.close();
@@ -145,16 +151,25 @@ public class DataRouting {
 			
 			}
 
+        static int StatelessDataRoute(File file) throws FileNotFoundException{
+            int choice = 0;
+                Scanner loadIn = new Scanner(file);
+		loadIn.nextLine();
+                String[] infor = loadIn.nextLine().split(",");
+                choice = Integer.getInteger(infor[4]) % n;
+                return choice;
+        }
 	static int StochasticDataRoute(){
 			int choice = -1;
 			double max = -1;
 			int count = 0;
+                        double avgTotal = total/n;
 			Iterator<double[]> ir = OP.iterator();
 			while(ir.hasNext()){				
 				double[] num = ir.next();
-				if(num[2]>max){
+				if(num[2]*avgTotal/num[0]>max){
 					choice = count ;
-					max=num[2];
+					max=num[2]*avgTotal/num[0];
 				}
 				count++;
 			}
@@ -182,6 +197,15 @@ public class DataRouting {
 		
 	}
 
+        static double[][] tmpData(){
+            double[][] tmp = new double[n][3];
+                for(int i = 0; i < n; i++){
+                    for(int j = 0; j < 3; j++){
+                        tmp[i][j] = OP.get(i)[j];          
+                    }
+                }
+           return tmp;
+        }
 	static void matlabStatistic(){
 		resultRecord.println("\n\n++++++++++++++++For matlab++++++++++\n");
 		resultRecord.println("Total,dup,index size,dedupRatio,dedupEfficiency\n");
@@ -193,23 +217,46 @@ public class DataRouting {
 
 			resultRecord.print(n.size);
 			resultRecord.print(",");
-			resultRecord.print(n.dedupR);
+			resultRecord.print(new DecimalFormat(".##").format(n.dedupR*100));
 			resultRecord.print(",");
-			resultRecord.print(n.dedupE);
+			resultRecord.print(new DecimalFormat(".##").format(n.dedupE*100));
 			resultRecord.println();
 		}
 
 		resultRecord.println("\n+++++++++++++++++++++statistics for each node++++++++++\n");
-		for(int i = 0; i < n; i++){
+		resultRecord.println("Dedup ratio:\n");
+                for(int i = 0; i < n; i++){
 			Iterator<Node> ir = nodeQue.iterator();
 			while(ir.hasNext()){
 				Node n = ir.next();
-				double dedupRatio = n.OP.get(i)[2];
+				double dedupRatio = n.op[i][2];
 				resultRecord.print(dedupRatio);
                                 resultRecord.print(",");                                
 			}
 			resultRecord.println();
-
+		}
+ 		resultRecord.println("Amount of data received:\n");               
+                for(int i = 0; i < n; i++){
+			Iterator<Node> ir = nodeQue.iterator();
+			while(ir.hasNext()){
+				Node n = ir.next();
+				double dataAmount = n.op[i][0];
+				resultRecord.print(dataAmount);
+                                resultRecord.print(",");                                
+			}
+			resultRecord.println();
+		}
+                
+                resultRecord.println("\nAmount of duplicate data:\n");               
+                for(int i = 0; i < n; i++){
+			Iterator<Node> ir = nodeQue.iterator();
+			while(ir.hasNext()){
+				Node n = ir.next();
+				double dataAmount = n.op[i][1];
+				resultRecord.print(dataAmount);
+                                resultRecord.print(",");                                
+			}
+			resultRecord.println();
 		}
 	}
 

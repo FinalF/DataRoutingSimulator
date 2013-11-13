@@ -20,19 +20,19 @@ public class Node {
 	 long size;
 	 double dedupR;
 	 double dedupE;
-	 ArrayList<double[]> OP;
+	 double[][] op;
 	 
 	 Node(){
 		 
 	 }
 	 
-	 Node(long total, long dup, long size, double dedupR, double dedupE,ArrayList<double[]> OP){
+	 Node(long total, long dup, long size, double dedupR, double dedupE,double[][] op){
 		 this.total = total;
 		 this.dup = dup;
 		 this.size = size;
 		 this.dedupR = dedupR;
 		 this.dedupE = dedupE;
-		 this.OP = OP;
+		 this.op = op;
 	 }
 
 }
