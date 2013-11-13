@@ -29,7 +29,7 @@ public class DataRouting {
 	public static PrintWriter resultRecord; 
 
 	
-	public static int segAmount = 100;  //segment, every waveAmount segments of data, calculate dedup rate  & record index size
+	public static int segAmount = 200;  //segment, every waveAmount segments of data, calculate dedup rate  & record index size
 	static long starttime;
 	static long endtime;	
 	
@@ -72,7 +72,7 @@ public class DataRouting {
 			INDEX = new ArrayList<HashMap<String, Integer>>(n);
 			OP = new ArrayList<double[]>(n);
 			for(int j=0; j<n ; j++){
-				 BF.add(j, new BloomFilter<String>(0.1, 7864320/n));
+//				 BF.add(j, new BloomFilter<String>(0.1, 4000000/n));
 				 INDEX.add(j, new HashMap<String, Integer>());
 				 double[] num = {0.0,0.0,0.0};  //total data-dup data-dedup ratio
 				 OP.add(j,num);
@@ -89,7 +89,7 @@ public class DataRouting {
 			File[] incomingFile = new File(outputpath).listFiles();
 			for(int h = 1; h <=incomingFile.length; h++){
                             File file = new File(outputpath+"/Segment_"+ h);
-			
+                            System.out.println("Procssing "+h+" th segment");
 			/*
 			 * Data routing operation
 			 * Before m, send it to all
@@ -118,9 +118,10 @@ public class DataRouting {
 			 * periodically output statistics (every 'segAmount' segments, we do one time's dedup)
 			 */
 			if(h%segAmount == 0){	
-				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),OP));
+                                ArrayList<double[]> tmp = OP;
+				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmp));
 				resultRecord.println();
-				resultRecord.println("The culmulative segments are: " + i +
+				resultRecord.println("The culmulative segments are: " + h +
 									"\nCurrent data amount is: "+total+
 									"\nThe duplicates are: "+dup+
 									"\nThe current index size is: " + indexTotal()+
@@ -136,8 +137,8 @@ public class DataRouting {
 			System.out.println("The total data is: "+total+"\nThe duplicates are: "+dup+
 								"\nThe deduplication rate is : " + (double)dup/total*100 +"%");
 
-
-			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),OP));
+                        ArrayList<double[]> tmp = OP;
+			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmp));
 	
 			matlabStatistic();
 			
@@ -179,15 +180,7 @@ public class DataRouting {
 		dup += dP.getDup();
 
 		totalChunkNum += dP.getTotalChunkNum();
-
-		resultRecord.println("The current index size is: " + indexTotal());
-		
-		System.out.println("The current index size is: " + indexTotal());
-//		System.out.println("The current BloomFilter size is: " + bf.size());		
-		
-
-
-		
+	
 		
 	}
 
@@ -215,6 +208,7 @@ public class DataRouting {
 				Node n = ir.next();
 				double dedupRatio = n.OP.get(i)[2];
 				resultRecord.print(dedupRatio);
+                                resultRecord.print(",");                                
 			}
 			resultRecord.println();
 
