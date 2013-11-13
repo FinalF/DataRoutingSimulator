@@ -33,8 +33,6 @@ public class DataRouting {
 	static long starttime;
 	static long endtime;	
 	
-	public static File fileManage = new File("testData/FileManager/fileInforRecord.txt");
-	public static File ChunkManage = new File("testData/chunkManage/chunkInfo");
 	public static String outputpath = "testData/outputSegSample";  //folder where store the input data table
 	public static long totalChunkNum = 0;
 	public static long fileTotal;
