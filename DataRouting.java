@@ -52,7 +52,9 @@ public class DataRouting {
 	public static void main(String[] args) throws IOException, InterruptedException {
 	
 /*----------------------------------Read in parameters----------------------------------------*/		
-			int i = 0;
+                        resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
+			resultRecord.flush();	
+                    int i = 0;
 				if(i<args.length){
 					n = Integer.parseInt(args[i]);
 					System.out.println("Total "+ n +" storage nodes");
@@ -68,6 +70,13 @@ public class DataRouting {
                         i++;
 				if(i < args.length){
 				mode = Integer.parseInt(args[i]);
+                                    if(mode==0){
+                                             resultRecord.println("Stochastic approach--- "+n+" node --- "+m+" explorations");                                    
+                                    }else if(mode==1){
+                                            resultRecord.println("Stateless  "+n+" node --- "+m+" explorations");
+                                    }else{
+                                        
+                                    }
 				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull");
 				}
 			/*Initialize index and BF for each node*/
@@ -81,8 +90,7 @@ public class DataRouting {
 				 OP.add(j,num);
 			}
                         
-                        resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
-			resultRecord.flush();
+
 			resultRecord.println("\nThe chunk size is: " + chunksize + " KB"
 					+ "\nThe segment size is: " + segsize + " MB");		
 			System.out.println("\nThe chunk size is: " + chunksize
@@ -100,6 +108,7 @@ public class DataRouting {
 			 */
                         if(mode==0){
                             /*my algorithm*/
+
                             if(h<=m){
                                     for(int k=0;k<n;k++){
                                             dedupProcess(file,INDEX.get(k),OP.get(k));
@@ -110,6 +119,7 @@ public class DataRouting {
                             }
                         }else if(mode==1){
                             /*stateless,hash(1st chunk) mod n*/
+
                             int choice = StatelessDataRoute(file);
                             dedupProcess(file,INDEX.get(choice),OP.get(choice));
                         }else if(mode==2){
@@ -156,7 +166,9 @@ public class DataRouting {
                 Scanner loadIn = new Scanner(file);
 		loadIn.nextLine();
                 String[] infor = loadIn.nextLine().split(",");
-                choice = Integer.getInteger(infor[4]) % n;
+//                System.out.println("The hash is "+infor[4]);
+                int tmp = Integer.parseInt(infor[4].substring(34),16);
+                choice = tmp % n;
                 return choice;
         }
 	static int StochasticDataRoute(){
