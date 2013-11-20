@@ -74,8 +74,8 @@ public class DataRouting {
                                              resultRecord.println("Stochastic approach--- "+n+" node --- "+m+" explorations");                                    
                                     }else if(mode==1){
                                             resultRecord.println("Stateless  "+n+" node --- "+m+" explorations");
-                                    }else{
-                                        
+                                    }else if(mode==2){
+                                            resultRecord.println("Single node, heuristic solution");
                                     }
 				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull");
 				}
@@ -123,7 +123,8 @@ public class DataRouting {
                             int choice = StatelessDataRoute(file);
                             dedupProcess(file,INDEX.get(choice),OP.get(choice));
                         }else if(mode==2){
-                            /*statefull*/
+                            /*heuristic*/
+                            dedupProcess(file,INDEX.get(0),OP.get(0));
                         }else{
                             System.out.println("Mode chosen error!");
                             resultRecord.close();
