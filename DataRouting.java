@@ -80,11 +80,12 @@ public class DataRouting {
 				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull");
 				}
 			/*Initialize index and BF for each node*/
+			File[] incomingFile = new File(outputpath).listFiles();//the folder in which all segments are
 			BF = new ArrayList<BloomFilter<String>>(n);
 			INDEX = new ArrayList<HashMap<String, Integer>>(n);
 			OP = new ArrayList<double[]>(n);
 			for(int j=0; j<n ; j++){
-//				 BF.add(j, new BloomFilter<String>(0.1, 4000000/n));
+				 BF.add(j, new BloomFilter<String>(0.1, incomingFile.length*segsize*1024/chunksize/n));
 				 INDEX.add(j, new HashMap<String, Integer>());
 				 double[] num = {0.0,0.0,0.0};  //total, data-dup, data-dedup ratio
 				 OP.add(j,num);
@@ -97,7 +98,7 @@ public class DataRouting {
 					+ "\nThe segment size is: " + segsize);	
                         
 			/*Process files(all the segments*/
-			File[] incomingFile = new File(outputpath).listFiles();
+
 			for(int h = 1; h <=incomingFile.length; h++){
                             File file = new File(outputpath+"/Segment_"+ h);
                             System.out.println("Procssing "+h+" th segment");
