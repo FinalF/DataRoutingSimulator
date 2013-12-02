@@ -73,11 +73,14 @@ public class DataRouting {
                                     if(mode==0){
                                              resultRecord.println("Stochastic approach--- "+n+" node --- "+m+" explorations");                                    
                                     }else if(mode==1){
-                                            resultRecord.println("Stateless  "+n+" node --- "+m+" explorations");
+                                            resultRecord.println("Stateless  "+n+" node");
                                     }else if(mode==2){
+                                            resultRecord.println("Stateful  "+n+" node");                                  
+                                    }else if(mode==3){
                                             resultRecord.println("Single node, heuristic solution");
                                     }
-				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull");
+                                    
+				}else{System.out.println("Choose mode: 0. MAB based\n1. stateless\n2. statefull\n3. single node");
 				}
 			/*Initialize index and BF for each node*/
 			File[] incomingFile = new File(outputpath).listFiles();//the folder in which all segments are
@@ -85,7 +88,7 @@ public class DataRouting {
 			INDEX = new ArrayList<HashMap<String, Integer>>(n);
 			OP = new ArrayList<double[]>(n);
 			for(int j=0; j<n ; j++){
-				 BF.add(j, new BloomFilter<String>(0.1, incomingFile.length*segsize*1024/chunksize/n));
+				 BF.add(j, new BloomFilter<String>(0.1, incomingFile.length*segsize*1024/chunksize));
 				 INDEX.add(j, new HashMap<String, Integer>());
 				 double[] num = {0.0,0.0,0.0};  //total, data-dup, data-dedup ratio
 				 OP.add(j,num);
@@ -98,7 +101,7 @@ public class DataRouting {
 					+ "\nThe segment size is: " + segsize);	
                         
 			/*Process files(all the segments*/
-
+			long startTime = System.currentTimeMillis();
 			for(int h = 1; h <=incomingFile.length; h++){
                             File file = new File(outputpath+"/Segment_"+ h);
                             System.out.println("Procssing "+h+" th segment");
@@ -124,6 +127,10 @@ public class DataRouting {
                             int choice = StatelessDataRoute(file);
                             dedupProcess(file,INDEX.get(choice),OP.get(choice));
                         }else if(mode==2){
+                            /*stateful*/
+                            int choice = StatefullDataRoute(file);
+                            dedupProcess(file,INDEX.get(choice),OP.get(choice));
+                        }else if(mode==3){
                             /*heuristic*/
                             dedupProcess(file,INDEX.get(0),OP.get(0));
                         }else{
@@ -147,17 +154,19 @@ public class DataRouting {
 			}	
 			
 			}
+			long endTime = System.currentTimeMillis();
 			resultRecord.println("The total data is: "+total+"\nThe duplicates are: "+dup+
 					 "\nThe deduplication rate is : " + (double)dup/total*100 +"%");
 			
 			System.out.println("The total data is: "+total+"\nThe duplicates are: "+dup+
-								"\nThe deduplication rate is : " + (double)dup/total*100 +"%");
+								"\nThe deduplication rate is : " + (double)dup/total*100 +"%"+
+								"\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
 
                         ArrayList<double[]> tmp = OP;
 			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData()));
                         tmp.clear();
 			matlabStatistic();
-			
+			resultRecord.println("\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
 			resultRecord.close();
 
 			
@@ -172,6 +181,33 @@ public class DataRouting {
                 int tmp = Integer.parseInt(infor[4].substring(34),16);
                 choice = tmp % n;
                 return choice;
+        }
+        
+        static int StatefullDataRoute(File file) throws FileNotFoundException{
+        	int choice = -1;
+        	double max = -1;
+        	/*Compare each chunk in the segment with BL for each node*/
+        	int[] match = new int[n];
+            Scanner loadIn = new Scanner(file);
+            loadIn.nextLine();
+            /*find number of matching chunks for each node per segment*/
+            while(loadIn.hasNextLine()){
+                String[] infor = loadIn.nextLine().split(",");
+                for(int i = 0; i < n; i++){
+                	if(BF.get(i).contains(infor[4])){
+                		match[i]++;
+                	}
+                }
+            }
+            /*integerage the load balance, choose the node*/
+            for(int i = 0; i < n; i++){
+            	match[i] /= (OP.get(i)[0]-OP.get(i)[1]);
+            	if(match[i]>max){
+            		choice = i;
+            		max = match[i];
+            	}
+            }
+        	return choice;
         }
 	static int StochasticDataRoute(){
 			int choice = -1;
