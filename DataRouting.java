@@ -165,7 +165,11 @@ public class DataRouting {
         static int StatelessDataRoute(File file) throws FileNotFoundException{
             int choice = 0;
                 Scanner loadIn = new Scanner(file);
+<<<<<<< HEAD
                 loadIn.nextLine();
+=======
+		loadIn.nextLine();
+>>>>>>> 875791e7b4e15dee4ad5ff02b1a0f62a81c6bb4b
                 String[] infor = loadIn.nextLine().split(",");
 //                System.out.println("The hash is "+infor[4]);
                 int tmp = Integer.parseInt(infor[4].substring(34),16);
@@ -176,6 +180,7 @@ public class DataRouting {
 			int choice = -1;
 			double max = -1;
 			int count = 0;
+<<<<<<< HEAD
             double avgTotal;// = total/n;
 			Iterator<double[]> ir = OP.iterator();
 			while(ir.hasNext()){				
@@ -183,6 +188,15 @@ public class DataRouting {
 				if(num[2]/(num[0]-num[1])>max){
 					choice = count ;
 					max=num[2]/(num[0]-num[1]);
+=======
+                        double avgTotal = total/n;
+			Iterator<double[]> ir = OP.iterator();
+			while(ir.hasNext()){				
+				double[] num = ir.next();
+				if(num[2]*avgTotal/num[0]>max){
+					choice = count ;
+					max=num[2]*avgTotal/num[0];
+>>>>>>> 875791e7b4e15dee4ad5ff02b1a0f62a81c6bb4b
 				}
 				count++;
 			}
