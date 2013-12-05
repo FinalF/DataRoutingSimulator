@@ -26,6 +26,8 @@ public class DataRouting {
 	public static int mode = 0;
 	public static int chunksize = 8;
 	public static int segsize = 16;
+	public static double balanceWeight = 0.5;
+	public static long comparisonNum = 0;
 	public static String resultRecordFolder = "testData/resultRecord";
 	public static Queue<Node> nodeQue=new LinkedList<Node>();
 	public static File[] recordFiles = new File(resultRecordFolder).listFiles();
@@ -52,7 +54,7 @@ public class DataRouting {
 	public static void main(String[] args) throws IOException, InterruptedException {
 	
 /*----------------------------------Read in parameters----------------------------------------*/		
-                        resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
+            resultRecord = new PrintWriter(resultRecordFolder+"/"+(recordFiles.length+1));
 			resultRecord.flush();	
                     int i = 0;
 				if(i<args.length){
@@ -90,7 +92,7 @@ public class DataRouting {
 			for(int j=0; j<n ; j++){
 				 BF.add(j, new BloomFilter<String>(0.1, incomingFile.length*segsize*1024/chunksize));
 				 INDEX.add(j, new HashMap<String, Integer>());
-				 double[] num = {0.0,0.0,0.0};  //total, data-dup, data-dedup ratio
+				 double[] num = {0.1,0.0,0.0};  //total, data-dup, data-dedup ratio
 				 OP.add(j,num);
 			}
                         
@@ -142,13 +144,14 @@ public class DataRouting {
 			 * periodically output statistics (every 'segAmount' segments, we do one time's dedup)
 			 */
 			if(h%segAmount == 0){	
-				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmpData()));
+				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmpData(),comparisonNum));
                                 resultRecord.println();
 				resultRecord.println("The culmulative segments are: " + h +
 									"\nCurrent data amount is: "+total+
 									"\nThe duplicates are: "+dup+
 									"\nThe current index size is: " + indexTotal()+
-									"\nThe deduplication rate is : " + (double)dup/total*100 +"%");
+									"\nThe deduplication rate is : " + (double)dup/total*100 +"%"+
+									"\nComparisons when indexing: "+comparisonNum);
 				resultRecord.println();
 				resultRecord.println("####The dedup efficiency is: " + (double)dup/(indexTotal())+" dup/index entry slot");	
 			}	
@@ -163,7 +166,7 @@ public class DataRouting {
 								"\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
 
                         ArrayList<double[]> tmp = OP;
-			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData()));
+			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData(),comparisonNum));
                         tmp.clear();
 			matlabStatistic();
 			resultRecord.println("\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
@@ -188,18 +191,23 @@ public class DataRouting {
         	double max = -1;
         	/*Compare each chunk in the segment with BL for each node*/
         	int[] match = new int[n];
+        	for(int i = 0; i < n; i ++){
+        		match[i] = 1;
+        	}
             Scanner loadIn = new Scanner(file);
             loadIn.nextLine();
             /*find number of matching chunks for each node per segment*/
             while(loadIn.hasNextLine()){
                 String[] infor = loadIn.nextLine().split(",");
                 for(int i = 0; i < n; i++){
+                	comparisonNum++;
                 	if(BF.get(i).contains(infor[4])){
                 		match[i]++;
                 	}
                 }
             }
             /*integerage the load balance, choose the node*/
+
             for(int i = 0; i < n; i++){
             	match[i] /= (OP.get(i)[0]-OP.get(i)[1]);
             	if(match[i]>max){
@@ -207,6 +215,13 @@ public class DataRouting {
             		max = match[i];
             	}
             }
+            
+            /*Update the BF of chosen node*/
+            while(loadIn.hasNextLine()){
+                String[] infor = loadIn.nextLine().split(",");
+                BF.get(choice).add(infor[4]); 
+            }
+            
         	return choice;
         }
 	static int StochasticDataRoute(){
@@ -215,11 +230,12 @@ public class DataRouting {
 			int count = 0;
             double avgTotal;// = total/n;
 			Iterator<double[]> ir = OP.iterator();
-			while(ir.hasNext()){				
+			while(ir.hasNext()){
+				comparisonNum++;
 				double[] num = ir.next();
-				if(num[2]/(num[0]-num[1])>max){
+				if(num[2]/Math.pow((num[0]-num[1]),balanceWeight)>max){
 					choice = count ;
-					max=num[2]/(num[0]-num[1]);
+					max=num[2]/Math.pow((num[0]-num[1]),balanceWeight);
 				}
 				count++;
 			}
@@ -258,7 +274,7 @@ public class DataRouting {
         }
 	static void matlabStatistic(){
 		resultRecord.println("\n\n++++++++++++++++For matlab++++++++++\n");
-		resultRecord.println("Total,dup,index size,dedupRatio,dedupEfficiency\n");
+		resultRecord.println("Total,dup,index size,dedupRatio,dedupEfficiency,comparisons\n");
 		for(Node n:nodeQue){
 			resultRecord.print(n.total);
 			resultRecord.print(",");
@@ -270,7 +286,10 @@ public class DataRouting {
 			resultRecord.print(new DecimalFormat(".##").format(n.dedupR*100));
 			resultRecord.print(",");
 			resultRecord.print(new DecimalFormat(".##").format(n.dedupE*100));
+			resultRecord.print(",");
+			resultRecord.print(n.comparisonNum);
 			resultRecord.println();
+
 		}
 
 		resultRecord.println("\n+++++++++++++++++++++statistics for each node++++++++++\n");
@@ -297,8 +316,8 @@ public class DataRouting {
 			resultRecord.println();
 		}
                 
-                resultRecord.println("\nAmount of duplicate data:\n");               
-                for(int i = 0; i < n; i++){
+            resultRecord.println("\nAmount of duplicate data:\n");               
+            for(int i = 0; i < n; i++){
 			Iterator<Node> ir = nodeQue.iterator();
 			while(ir.hasNext()){
 				Node n = ir.next();
@@ -308,6 +327,32 @@ public class DataRouting {
 			}
 			resultRecord.println();
 		}
+          
+            
+            resultRecord.println("\nAmount of unique data (Load):\n");               
+            for(int i = 0; i < n; i++){
+			Iterator<Node> ir = nodeQue.iterator();
+			while(ir.hasNext()){
+				Node n = ir.next();
+				double dataAmount = n.op[i][0] - n.op[i][1];
+				resultRecord.print(dataAmount);
+                                resultRecord.print(",");                                
+			}
+			resultRecord.println();
+		}
+                
+//        resultRecord.println("\nTimes of comparisons:\n");               
+//        for(int i = 0; i < n; i++){
+//			Iterator<Node> ir = nodeQue.iterator();
+//			while(ir.hasNext()){
+//				Node n = ir.next();
+//				long comparison = n.op[i][1];
+//				resultRecord.print(dataAmount);
+//                                resultRecord.print(",");                                
+//			}
+//			resultRecord.println();
+//		}
+                
 	}
 
 }
