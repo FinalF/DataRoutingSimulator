@@ -26,7 +26,7 @@ public class DataRouting {
 	public static int mode = 0;
 	public static int chunksize = 8;
 	public static int segsize = 16;
-	public static double balanceWeight = 0.5;
+	public static double balanceWeight = 1.6;
 	public static long comparisonNum = 0;
 	public static String resultRecordFolder = "testData/resultRecord";
 	public static Queue<Node> nodeQue=new LinkedList<Node>();
@@ -73,7 +73,8 @@ public class DataRouting {
 				if(i < args.length){
 				mode = Integer.parseInt(args[i]);
                                     if(mode==0){
-                                             resultRecord.println("Stochastic approach--- "+n+" node --- "+m+" explorations");                                    
+                                             resultRecord.println("Stochastic approach--- "+n+" node --- "+m+" explorations"+
+                                            		 				"Balance weight is: "+balanceWeight);                                    
                                     }else if(mode==1){
                                             resultRecord.println("Stateless  "+n+" node");
                                     }else if(mode==2){
@@ -106,7 +107,7 @@ public class DataRouting {
 			long startTime = System.currentTimeMillis();
 			for(int h = 1; h <=incomingFile.length; h++){
                             File file = new File(outputpath+"/Segment_"+ h);
-                            System.out.println("Procssing "+h+" th segment");
+//                            System.out.println("Procssing "+h+" th segment");
 			/*
 			 * Data routing operation
 			 * Before m, send it to all
@@ -144,7 +145,7 @@ public class DataRouting {
 			 * periodically output statistics (every 'segAmount' segments, we do one time's dedup)
 			 */
 			if(h%segAmount == 0){	
-				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmpData(),comparisonNum));
+				nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/indexTotal(),tmpData(),dataSkew(),comparisonNum));
                                 resultRecord.println();
 				resultRecord.println("The culmulative segments are: " + h +
 									"\nCurrent data amount is: "+total+
@@ -163,12 +164,13 @@ public class DataRouting {
 			
 			System.out.println("The total data is: "+total+"\nThe duplicates are: "+dup+
 								"\nThe deduplication rate is : " + (double)dup/total*100 +"%"+
-								"\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
+								"\nThe processing time is\t: " + (endTime - startTime)/1000+" seconds");
 
-                        ArrayList<double[]> tmp = OP;
-			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData(),comparisonNum));
-                        tmp.clear();
+//                        ArrayList<double[]> tmp = OP;
+			nodeQue.add(new Node(total,dup,indexTotal(),(double)dup/total,(double)dup/(indexTotal()),tmpData(),dataSkew(),comparisonNum));
+//                        tmp.clear();
 			matlabStatistic();
+			resultRecord.println("Average Load is: "+loadAvg());
 			resultRecord.println("\nThe processing time is: " + (endTime - startTime)/1000+" seconds");
 			resultRecord.close();
 
@@ -189,11 +191,13 @@ public class DataRouting {
         static int StatefullDataRoute(File file) throws FileNotFoundException{
         	int choice = -1;
         	double max = -1;
+            double avgTotal=loadAvg(); //average load
         	/*Compare each chunk in the segment with BL for each node*/
-        	int[] match = new int[n];
+        	double[] match = new double[n];
         	for(int i = 0; i < n; i ++){
         		match[i] = 1;
         	}
+        	
             Scanner loadIn = new Scanner(file);
             loadIn.nextLine();
             /*find number of matching chunks for each node per segment*/
@@ -207,28 +211,46 @@ public class DataRouting {
                 }
             }
             /*integerage the load balance, choose the node*/
-
+//            System.out.println("Average load is : "+avgTotal);
             for(int i = 0; i < n; i++){
-            	match[i] /= (OP.get(i)[0]-OP.get(i)[1]);
-            	if(match[i]>max){
-            		choice = i;
-            		max = match[i];
-            	}
+            	/*exclude overloaded nodes*/
+//            	System.out.println("Load is : "+(OP.get(i)[0]-OP.get(i)[1]));
+            	if(OP.get(i)[0]-OP.get(i)[1] > 1.05*avgTotal){
+            		continue;
+            	}else{
+		            	match[i] = match[i]*avgTotal/(OP.get(i)[0]-OP.get(i)[1]);
+		            	/*only choose the node with vote above the threshold*/
+		            	if(match[i]>1.5*segsize/chunksize*1024/n && match[i]>max){
+//	            		if(match[i]>max){
+		            		choice = i;
+		            		max = match[i];
+		            	}
+		            }
+        	}
+            if(choice==-1){
+	        	/*ohterwise, choose the stateless /lightest load*/
+	            if(OP.get(StatelessDataRoute(file))[0]-OP.get(StatelessDataRoute(file))[1] <= 1.05*avgTotal){
+	            	choice = StatelessDataRoute(file);
+	            }else{
+	            	choice = loadMinIndex();
+	            }
             }
-            
+//            System.out.println("Choice is : "+choice);
+            Scanner loadIn2 = new Scanner(file);
+            loadIn2.nextLine();
             /*Update the BF of chosen node*/
-            while(loadIn.hasNextLine()){
-                String[] infor = loadIn.nextLine().split(",");
+            while(loadIn2.hasNextLine()){
+                String[] infor = loadIn2.nextLine().split(",");
                 BF.get(choice).add(infor[4]); 
             }
-            
+
         	return choice;
         }
 	static int StochasticDataRoute(){
 			int choice = -1;
 			double max = -1;
 			int count = 0;
-            double avgTotal;// = total/n;
+//            double avgTotal=loadAvg(); //average load
 			Iterator<double[]> ir = OP.iterator();
 			while(ir.hasNext()){
 				comparisonNum++;
@@ -242,6 +264,21 @@ public class DataRouting {
 			return choice;
 	}
 
+	static double dataSkew(){
+		double dataSkew;
+		double max = -1;
+        for(int i = 0; i < n; i++){
+        	/*exclude overloaded nodes*/
+//        	System.out.println("Load is : "+(OP.get(i)[0]-OP.get(i)[1]));
+        	if(OP.get(i)[0]-OP.get(i)[1] > max){
+        		max = OP.get(i)[0]-OP.get(i)[1];
+        	}
+        }
+    	dataSkew = max/loadAvg();
+    	System.out.println("The max load/avg load: "+max+" / "+loadAvg()+"Dataskew: "+dataSkew);
+    	return dataSkew;
+	}
+	
 	static long indexTotal(){
 		long size = 0;
 		for(int i = 0; i < INDEX.size(); i++){
@@ -263,7 +300,7 @@ public class DataRouting {
 		
 	}
 
-        static double[][] tmpData(){
+    static double[][] tmpData(){
             double[][] tmp = new double[n][3];
                 for(int i = 0; i < n; i++){
                     for(int j = 0; j < 3; j++){
@@ -272,9 +309,30 @@ public class DataRouting {
                 }
            return tmp;
         }
+    /*calculate average load*/
+    static double loadAvg(){
+        double avg=0;
+    	for(int i = 0; i < n; i++){
+        	avg += (OP.get(i)[0]-OP.get(i)[1]);
+        }
+    	avg/=n;
+    	return avg;
+    }
+    
+    /*calculate the lightest load*/
+    static int loadMinIndex(){
+        int min=0;
+    	for(int i = 1; i < n; i++){
+    		if((OP.get(i)[0]-OP.get(i)[1])<(OP.get(min)[0]-OP.get(min)[1])){
+    			min = i;
+    		}
+        }
+    	return min;
+    }
+    
 	static void matlabStatistic(){
 		resultRecord.println("\n\n++++++++++++++++For matlab++++++++++\n");
-		resultRecord.println("Total,dup,index size,dedupRatio,dedupEfficiency,comparisons\n");
+		resultRecord.println("Total,dup,index size,dedupRatio,dedupEfficiency,dataSkew,comparisons\n");
 		for(Node n:nodeQue){
 			resultRecord.print(n.total);
 			resultRecord.print(",");
@@ -286,6 +344,8 @@ public class DataRouting {
 			resultRecord.print(new DecimalFormat(".##").format(n.dedupR*100));
 			resultRecord.print(",");
 			resultRecord.print(new DecimalFormat(".##").format(n.dedupE*100));
+			resultRecord.print(",");
+			resultRecord.print(n.dataSkew);
 			resultRecord.print(",");
 			resultRecord.print(n.comparisonNum);
 			resultRecord.println();

@@ -21,19 +21,21 @@ public class Node {
 	 double dedupR;
 	 double dedupE;
 	 double[][] op;
+	 double dataSkew;
 	 long comparisonNum;
 	 
 	 Node(){
 		 
 	 }
 	 
-	 Node(long total, long dup, long size, double dedupR, double dedupE,double[][] op,long comparisonNum){
+	 Node(long total, long dup, long size, double dedupR, double dedupE,double[][] op,double dataSkew, long comparisonNum){
 		 this.total = total;
 		 this.dup = dup;
 		 this.size = size;
 		 this.dedupR = dedupR;
 		 this.dedupE = dedupE;
 		 this.op = op;
+		 this.dataSkew = dataSkew;
 		 this.comparisonNum = comparisonNum;
 	 }
 
